@@ -1,0 +1,23 @@
+{
+  "name": "pushy-web-app",
+  "version": "1.0.0",
+  "description": "Web app for Pushy registration, channel subscriptions, and real-time notification handling",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "pushy",
+    "web-push",
+    "notifications",
+    "channels",
+    "topics"
+  ],
+  "author": "",
+  "license": "ISC"
+}

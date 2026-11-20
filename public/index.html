@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pushy Web Push &amp; Channel Subscriptions</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Pushy Official Web SDK -->
+  <script src="https://sdk.pushy.me/web/1.0.24/pushy-sdk.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="p-4 sm:p-8">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full"></div>
+
+  <div class="max-w-5xl mx-auto space-y-6">
+    
+    <!-- Top Header & App Status -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div>
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/30">
+            🔔
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">Pushy Web Push</h1>
+            <p class="text-xs text-slate-400">Device registration, channel subscriptions, and real-time push handling</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Status Badges -->
+      <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-1.5 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs">
+          <span class="text-slate-400">Browser Permission:</span>
+          <span id="permissionBadge" class="badge badge-idle">Checking...</span>
+        </div>
+        <div class="flex items-center space-x-1.5 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs">
+          <span class="text-slate-400">Device Status:</span>
+          <span id="statusBadge" class="badge badge-idle">Unregistered</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Getting Started Guide Banner -->
+    <div class="bg-indigo-950/40 border border-indigo-800/60 rounded-xl p-4 flex items-start space-x-3 text-sm text-indigo-200">
+      <span class="text-xl">💡</span>
+      <div class="space-y-1">
+        <p class="font-medium text-white">How it works:</p>
+        <p class="text-xs text-indigo-300 leading-relaxed">
+          1. Enter your <strong>Pushy App ID</strong> from <a href="https://dashboard.pushy.me" target="_blank" rel="noopener noreferrer" class="underline hover:text-white font-semibold">dashboard.pushy.me</a>.
+          <br>
+          2. Click <strong>Register Device</strong> to generate a unique Pushy Device Token.
+          <br>
+          3. Enter a channel name and click <strong>Subscribe</strong>. You can then broadcast notifications to all channel subscribers!
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Grid: 2 Columns on desktop -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Left Column: Setup & Registration & Subscriptions -->
+      <div class="space-y-6">
+
+        <!-- Card 1: Pushy Configuration -->
+        <section class="card p-5 space-y-4 shadow-lg">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <span>⚙️</span> 1. App Configuration
+            </h2>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label for="appIdInput" class="block text-xs font-medium text-slate-300 mb-1">Pushy App ID <span class="text-rose-400">*</span></label>
+              <div class="flex gap-2">
+                <input type="text" id="appIdInput" placeholder="e.g. 64a1b2c3d4e5f6..." class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 font-mono">
+                <button id="saveAppIdBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition">Save</button>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1">Found in your Pushy Dashboard under App Settings &rarr; App ID.</p>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="apiKeyInput" class="block text-xs font-medium text-slate-300">Pushy Secret API Key</label>
+                <span id="serverKeyStatus" class="text-[10px] text-emerald-400 font-medium"></span>
+              </div>
+              <div class="flex gap-2">
+                <input type="password" id="apiKeyInput" placeholder="e.g. b1ee8af1..." class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 font-mono">
+                <button id="saveApiKeyBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition">Save</button>
+              </div>
+              <p id="apiKeyHelp" class="text-[11px] text-slate-500 mt-1">Stored locally in browser or loaded from server <code>.env</code> file.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Card 2: Device Registration -->
+        <section class="card p-5 space-y-4 shadow-lg">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <span>📱</span> 2. Register Device
+            </h2>
+          </div>
+
+          <div class="space-y-3">
+            <button id="registerBtn" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium rounded-lg shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition focus:outline-none">
+              <svg id="registerSpinner" class="hidden animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span id="registerBtnText">Register Device</span>
+            </button>
+
+            <!-- Permission Denied Warning & Fix Guide -->
+            <div id="permissionDeniedBox" class="hidden p-3.5 rounded-lg bg-rose-950/60 border border-rose-800 text-xs text-rose-200 space-y-2">
+              <div class="flex items-center space-x-2 text-rose-300 font-semibold">
+                <span>🚫</span>
+                <span>Notification Permission Denied by Browser</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed">
+                Your browser or system has blocked notifications for <code>http://localhost:3000</code>. To allow notifications:
+              </p>
+              <ol class="list-decimal list-inside space-y-1 text-slate-300 pl-1 text-[11px]">
+                <li>Click the <strong>tune/padlock/site icon</strong> on the left side of your browser address bar.</li>
+                <li>Toggle <strong>Notifications</strong> to <strong>Allow</strong> (or Reset permissions).</li>
+                <li>If on macOS, ensure <strong>System Settings &rarr; Notifications &rarr; Chrome/Safari</strong> is enabled and not silenced by Focus mode.</li>
+                <li>Reload this page and click <strong>Register Device</strong> again.</li>
+              </ol>
+            </div>
+
+            <!-- Error Log Details Box -->
+            <div id="registrationErrorBox" class="hidden p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs space-y-1">
+              <div class="flex items-center justify-between text-slate-400">
+                <span class="font-semibold text-rose-400">Failure Details:</span>
+                <span id="errorTimestamp" class="text-[10px] text-slate-500"></span>
+              </div>
+              <pre id="errorLogContent" class="code-block p-2 text-[11px] text-rose-300 overflow-x-auto whitespace-pre-wrap"></pre>
+            </div>
+
+            <!-- Device Token Box -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-400">Pushy Device Token:</span>
+                <button id="copyTokenBtn" disabled class="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:hover:text-indigo-400 font-medium">📋 Copy</button>
+              </div>
+              <div id="tokenDisplay" class="code-block p-2.5 text-xs text-slate-300 break-all select-all min-h-[42px] flex items-center">
+                No device token registered yet. Click "Register Device" above.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Card 3: Channel Subscription -->
+        <section class="card p-5 space-y-4 shadow-lg">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <span>📡</span> 3. Channel / Topic Subscriptions
+            </h2>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 font-bold">#</span>
+                <input type="text" id="channelInput" placeholder="news, alerts, dev..." class="w-full pl-7 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 font-mono">
+              </div>
+              <button id="subscribeBtn" disabled class="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:hover:bg-purple-600 text-white font-medium text-sm rounded-lg shadow-md shadow-purple-600/30 flex items-center gap-2 transition focus:outline-none">
+                <svg id="subscribeSpinner" class="hidden animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span>Subscribe</span>
+              </button>
+            </div>
+
+            <!-- Active Channels -->
+            <div>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Subscribed Channels</p>
+              <div id="topicsList" class="flex flex-wrap"></div>
+              <p id="noTopicsMsg" class="text-xs text-slate-500 italic">No channels subscribed yet. Register and subscribe to start receiving topic broadcasts.</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Right Column: Dispatcher & Live Log -->
+      <div class="space-y-6">
+
+        <!-- Card 4: Send Test Notification to Channel -->
+        <section class="card p-5 space-y-4 shadow-lg border-indigo-900/50">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <span>🚀</span> 4. Channel Broadcast Dispatcher
+            </h2>
+            <span class="text-xs text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800/80">Built-in Tester</span>
+          </div>
+
+          <p class="text-xs text-slate-400">
+            Publish a push notification directly to all devices subscribed to a channel using Pushy's Send API.
+          </p>
+
+          <div class="space-y-3">
+            <div>
+              <label for="testChannelSelect" class="block text-xs font-medium text-slate-300 mb-1">Target Channel</label>
+              <select id="testChannelSelect" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 font-mono">
+                <option value="">-- No channels subscribed yet --</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="testTitleInput" class="block text-xs font-medium text-slate-300 mb-1">Notification Title</label>
+              <input type="text" id="testTitleInput" value="Breaking Channel Update" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+              <label for="testMessageInput" class="block text-xs font-medium text-slate-300 mb-1">Message Body</label>
+              <textarea id="testMessageInput" rows="2" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500">Hello to everyone subscribed to this channel!</textarea>
+            </div>
+
+            <button id="sendTestBtn" class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium rounded-lg shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition focus:outline-none">
+              <svg id="sendSpinner" class="hidden animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span>Broadcast to Channel</span>
+            </button>
+
+            <!-- Feedback message -->
+            <div id="sendResult" class="hidden"></div>
+          </div>
+        </section>
+
+        <!-- Card 5: Live Activity Feed -->
+        <section class="card p-5 space-y-4 shadow-lg">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <span>📥</span> Live Received Notifications
+            </h2>
+            <button id="clearLogBtn" class="text-xs text-slate-400 hover:text-slate-200 transition">Clear Log</button>
+          </div>
+
+          <div id="notificationsList" class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+            <p id="noNotificationsMsg" class="text-xs text-slate-500 italic py-6 text-center">
+              No notifications received in this session yet. Incoming notifications handled via <code>Pushy.setNotificationListener</code> will appear here.
+            </p>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="pt-6 border-t border-slate-800 text-center text-xs text-slate-500">
+      Pushy Web Push Integration &bull; Powered by <a href="https://pushy.me" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white underline">Pushy.me</a>
+    </footer>
+
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
